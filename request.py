@@ -2,6 +2,8 @@ import base64
 import requests
 import json
 import os
+import pandas as pd
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -30,7 +32,7 @@ def scheduleRequest():
 
 def getPassesGames():
 
-     with open("schedule.json", "r") as read_file:
+    with open("schedule.json", "r") as read_file:
         data = json.load(read_file)
         games = data["fullgameschedule"]["gameentry"]
         j = 199
@@ -56,10 +58,12 @@ def getPassesGames():
                 j += 1
             except requests.exceptions.RequestException:
                 print('HTTP Request failed')
-        with open("passes.json", "a") as write_file:
-            json.dump(gameDict, write_file, indent=4)
+    with open("passes.json", "a") as write_file:
+        json.dump(gameDict, write_file, indent=4)
 
 
+
+# returns a list containing total passes for each game
 def getPasses():
     passes = []
     with open("passes.json", "r") as read_file:
@@ -69,78 +73,123 @@ def getPasses():
             passes.append(plays)
     return passes
 
+
+# returns a dict containing all passes attempted over 20 yards for each game
 def getPassesOver20Yards():
 
-    newPlays = {}
-    j = 0
+    allPlays = {}
     term = "deep"
     with open("passes.json", "r") as read_file:
-        data = json.load(read_file)
-        plays = data["gameplaybyplay"]["plays"]["play"]
-        for i in range(len(plays)):
-            playDescription = plays[i]["description"]
-            words = playDescription.split()
-            if term.lower() in words:
-                newPlays[j] = plays[i]["passingPlay"]
-                j+= 1
+        games = json.load(read_file)
+        for i in range(len(games)):
+            plays = games[str(i)]["gameplaybyplay"]["plays"]["play"]
+            k = 0
+            game = {}
+            for j in range(len(plays)):
+                playDescription = plays[j]["description"]
+                words = playDescription.split()
+                if term.lower() in words:
+                    game[k] = plays[j]["passingPlay"]
+                    k+= 1
+            allPlays[i] = game
     
     with open("passes-over-20-yards.json", "w") as write_file:
-        json.dump(newPlays, write_file)
+        json.dump(allPlays, write_file)
 
-    return len(newPlays)
+    return allPlays
 
 
+# returns a dict containing all completed passes over 20 yards for each game
 def getCompletedPasses():
     completedPasses = {}
-    j = 0
+    
     with open("passes-over-20-yards.json", "r") as read_file:
-        data = json.load(read_file)
-        for i in range(len(data)):
-            if data[str(i)]["isCompleted"] == "true":
-                completedPasses[j] = data[str(i)]
-                j+=1
+        games = json.load(read_file)
+        for i in range(len(games)):
+            k = 0
+            game = {}
+            gamePasses = games[str(i)]
+            for j in range(len(gamePasses)):
+                if gamePasses[str(j)]["isCompleted"] == "true":
+                    game[k] = gamePasses[str(j)]
+                    k += 1
+                   
+            completedPasses[i] = game
 
     with open("passes-completed.json", "w") as write_file:
         json.dump(completedPasses, write_file)
 
-    return len(completedPasses)
+    return completedPasses
 
 
-def getIncompletedOrInterceptedPasses():
+# returns a dict containing all incompletions for passes > 20 yards for each game
+def getIncompletedPasses():
     incompletedPasses = {}
-    interceptedPasses = {}
-    j = 0
     with open("passes-over-20-yards.json", "r") as read_file:
-        data = json.load(read_file)
-        for i in range(len(data)):
-            if data[str(i)]["isCompleted"] == "false" and not data[str(i)].has_key("interceptingPlayer") :
-                incompletedPasses[j] = data[str(i)]
-                j+=1
-            elif data[str(i)]["isCompleted"] == "false" and data[str(i)].has_key("interceptingPlayer") :
-                interceptedPasses[j] = data[str(i)]
-                j+=1
+        games = json.load(read_file)
+        for i in range(len(games)):
+            game = {}
+            k = 0
+            gamePasses = games[str(i)]
+            for j in range(len(gamePasses)):
+                if gamePasses[str(j)]["isCompleted"] == "false" and not gamePasses[str(j)].has_key("interceptingPlayer") :
+                    game[k] = gamePasses[str(j)]
+                    k+=1
+            incompletedPasses[i] = game
+                
 
-    with open("passes-incompleted-intercepted.json", "w") as write_file:
+    with open("passes-incompleted.json", "w") as write_file:
         json.dump(incompletedPasses, write_file)
 
-    return len(incompletedPasses), len(interceptedPasses)
+    return incompletedPasses
 
 
+# returns a dict containing all interceptions for passes attempted > 20 yards for each game
+def getInterceptedPasses():
+    interceptedPasses = {}
+    with open("passes-over-20-yards.json", "r") as read_file:
+        games = json.load(read_file)
+        for i in range(len(games)):
+            game = {}
+            k = 0
+            gamePasses = games[str(i)]
+            for j in range(len(gamePasses)):
+                if gamePasses[str(j)]["isCompleted"] == "false" and gamePasses[str(j)].has_key("interceptingPlayer") :
+                    game[k] = gamePasses[str(j)]
+                    k+=1
+
+            interceptedPasses[i] = game
+                
+
+    with open("passes-intercepted.json", "w") as write_file:
+        json.dump(interceptedPasses, write_file)
+
+    return interceptedPasses
+
+
+
+# returns a dict containing all incomplete passes thrown > 20 yards that resulted in defensive
+# pass interference for every game
 def getPassInterferencePasses():
     interferencePasses = {}
-    j = 0
     with open("passes-over-20-yards.json", "r") as read_file:
-        data = json.load(read_file)
-        for i in range(len(data)):
-            if data[str(i)].has_key("penalties"):
-                if data[str(i)]["penalties"]["penalty"][0]["description"] == "Defensive Pass Interference":
-                    interferencePasses[j] = data[str(i)]
-                    j+=1
+        games = json.load(read_file)
+        for i in range(len(games)):
+            game = {}
+            k = 0
+            gamePasses = games[str(i)]
+            for j in range(len(gamePasses)):
+                if gamePasses[str(j)].has_key("penalties"):
+                    if gamePasses[str(j)]["isCompleted"] == "false" and gamePasses[str(j)]["penalties"]["penalty"][0]["description"] == "Defensive Pass Interference":
+                        game[k] = gamePasses[str(j)]
+                        k+=1
+
+            interferencePasses[i] = game
 
     with open("passes-interference.json", "w") as write_file:
         json.dump(interferencePasses, write_file)
 
-    return len(interferencePasses)
+    return interferencePasses
 
 
 
@@ -148,11 +197,11 @@ def getPassInterferencePasses():
 # passesRequest()
 # getPassesGames()
 
-passes = getPasses()
-print(len(passes))
+# passes = getPasses()
 # deepPasses = getPassesOver20Yards()
 # completedPasses = getCompletedPasses()
-# incompletedPasses, interceptedPasses = getIncompletedOrInterceptedPasses()
+# incompletedPasses = getIncompletedPasses()
+# interceptedPasses = getInterceptedPasses()
 # passInterferencePasses = getPassInterferencePasses()
 
 # deepPlays = (float(deepPasses) / float(passes)) * 100
@@ -174,4 +223,8 @@ print(len(passes))
 # print ("percentage of deep passes resulting in an INCOMPLETION : " + str(incompletedPlays) + "%")
 # print ("percentage of deep passes resulting in an INTERCEPTION: " + str(interceptionPlays) + "%")
 
+
+# pass_series = pd.Series(passes)
+# print(pass_series.mode())
+#deepPass_series = pd.Series(deepPasses)
 
