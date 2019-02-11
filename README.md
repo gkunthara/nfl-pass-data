@@ -13,4 +13,4 @@ Blog post: https://www.georgekunthara.me/nfl-deep-passes/
 ## Libraries in use:
 
 * [pandas](https://pandas.pydata.org/)
-* [MySportsDataFeed](https://www.mysportsfeeds.com/)
+* [MySportsDataFeed](https://github.com/MySportsFeeds/mysportsfeeds-python)
