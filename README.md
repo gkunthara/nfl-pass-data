@@ -10,4 +10,7 @@ While watching NFL games, I feel as if whenever a deep pass is thrown (a pass > 
 
 Blog post: https://www.georgekunthara.me/nfl-deep-passes/
 
+## Libraries in use:
 
+* [pandas](https://pandas.pydata.org/)
+* [MySportsDataFeed](https://www.mysportsfeeds.com/)
